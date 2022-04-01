@@ -1,7 +1,7 @@
 import os
 import csv
 from typing import List
-from PIL import Image
+from PIL import Image, ImageFile
 from copy import deepcopy
 
 import numpy as np
@@ -9,14 +9,13 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+
 class IAPSDataset(Dataset):
     def __init__(self, dir, crop=None):
         self.ids, self.labels = self.read_annotations(dir)
-        assert len(self.ids) == len(
-            set(self.ids)
-        ), f"{len(self.ids)}, {len(set(self.ids))}"
         self.images = self.read_images(dir)
-        print(len(self.ids), len(self.labels), len(self.images))
         self.image_transformation = self.get_image_transformation(crop)
         self.embeddings = None
 
@@ -94,3 +93,40 @@ class IAPSDataset(Dataset):
             embeddings = np.array(embeddings)
         assert len(embeddings) == len(self.images)
         self.embeddings = embeddings
+
+
+class StimuliDataset(Dataset):
+    def __init__(self, dir, crop=None):
+        self.ids, self.images = self.read_images(dir)
+        self.image_transformation = self.get_image_transformation(crop)
+
+    def __getitem__(self, index):
+        return self.ids[index], self.image_transformation(self.images[index])
+
+    def __len__(self):
+        return len(self.images)
+
+    def get_image_transformation(self, crop):
+        if crop is None:
+            crop = 224
+
+        image_transform = transforms.Compose(
+            [
+                transforms.Resize(crop + 32),
+                transforms.RandomCrop(crop),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
+                ),
+            ]
+        )
+
+        return image_transform
+
+    def read_images(self, dir):
+        images = []
+        ids = []
+        for img_bn in os.listdir(dir):
+            ids.append(os.path.splitext(img_bn)[0])
+            images.append(Image.open(os.path.join(dir, img_bn)))
+        return ids, images
