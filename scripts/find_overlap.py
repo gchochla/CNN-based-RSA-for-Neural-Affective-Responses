@@ -63,7 +63,9 @@ def main():
         similarities = {
             k: v
             for i, (k, v) in enumerate(
-                sorted(similarities.items(), key=lambda item: item[1])
+                sorted(
+                    similarities.items(), key=lambda item: item[1], reverse=True
+                )
             )
             if i < args.retrieved
         }
