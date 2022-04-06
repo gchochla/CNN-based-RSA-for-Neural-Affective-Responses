@@ -1,4 +1,7 @@
 import logging
+from argparse import Namespace
+from typing import Dict, Optional
+
 from tqdm import tqdm
 
 import torch
@@ -6,25 +9,34 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
+from project.predictors import Predictor
+from project.datasets import IAPSDataset
+
 
 def get_linear_schedule_with_warmup(
-    optimizer, num_warmup_steps, num_training_steps, last_epoch=-1
-):
+    optimizer: optim.Optimizer,
+    num_warmup_steps: int,
+    num_training_steps: int,
+    last_epoch: Optional[int] = -1,
+) -> optim.lr_scheduler.LambdaLR:
     """
-    Create a schedule with a learning rate that decreases linearly from the
-    initial lr set in the optimizer to 0, after a warmup period during which
-    it increases linearly from 0 to the initial lr set in the optimizer.
+    From: `https://github.com/huggingface/transformers/blob/v4.17.0/src/transformers/optimization.py#L75`.
+    Create a schedule with a learning rate that decreases linearly from
+    the initial lr set in the optimizer to 0, after a warmup period during
+    which it increases linearly from 0 to the initial lr set in the optimizer.
+
     Args:
-        optimizer ([`~torch.optim.Optimizer`]):
+        optimizer:
             The optimizer for which to schedule the learning rate.
-        num_warmup_steps (`int`):
+        num_warmup_steps:
             The number of steps for the warmup phase.
-        num_training_steps (`int`):
+        num_training_steps:
             The total number of training steps.
-        last_epoch (`int`, *optional*, defaults to -1):
+        last_epoch:
             The index of the last epoch when resuming training.
+
     Return:
-        `torch.optim.lr_scheduler.LambdaLR` with the appropriate schedule.
+        Appropriate schedule.
     """
 
     def lr_lambda(current_step: int):
@@ -40,9 +52,36 @@ def get_linear_schedule_with_warmup(
 
 
 class EmbeddingsTrainer:
+    """Image encoder (aka image embeddings) trainer class.
+
+    Attributes:
+        model: predictor model.
+        train_dataset: train dataset.
+        args: various training and evaluation arguments.
+        dev_dataset: evaluation dataset.
+        logger: logger.
+    """
+
     def __init__(
-        self, model, dataset, train_args, dev_dataset=None, logging_level=None
+        self,
+        model: Predictor,
+        dataset: IAPSDataset,
+        train_args: Namespace,
+        dev_dataset: Optional[IAPSDataset] = None,
+        logging_level: Optional[int] = None,
     ):
+        """Init.
+
+        Args:
+            model: entire predictor.
+            dataset: train dataset.
+            train_args: whichever namespace with training arguments
+                (device, learning_rate, adam_beta1, adam_beta2,
+                adam_epsilon, weight_decay, train_batch_size,
+                eval_batch_size, etc.)
+            dev_dataset: evaluation dataset.
+            logging_level: at which level to log messages.
+        """
         self.model = model
         self.train_dataset = dataset
         self.args = train_args
@@ -55,6 +94,7 @@ class EmbeddingsTrainer:
         self.logger.setLevel(logging_level)
 
     def train(self):
+        """Trains `model` on `train_dataset`."""
         self.model = self.model.to(self.args.device)
         self.model.train()
 
@@ -118,7 +158,16 @@ class EmbeddingsTrainer:
 
             self.logger.info(f"Epoch {epoch+1} metrics: {results}")
 
-    def evaluate(self, data_loader, desc):
+    def evaluate(self, data_loader, desc) -> Dict[str, float]:
+        """Evaluates on provided `data_loader`.
+
+        Args:
+            data_loader: `DataLoader` to evaluate on.
+            desc: description used in `tqdm`.
+
+        Returns:
+            A dict of eval metrics.
+        """
         self.model.eval()
 
         eval_loss = 0.0
