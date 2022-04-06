@@ -24,8 +24,16 @@ from torchvision.models import (
 
 
 class Embeddings(nn.Module):
-    id = None
-    out_dim = None
+    """Base image encoder class.
+
+    Attributes:
+        id: if the current encoder comes in different flavors,
+            this distinguishes one version from the other, e.g.
+            ResNet-152 vs ResNet-101. Implemented as function
+            with property decorator.
+        out_dim: dimensionality of output. Implemented as function
+            with property decorator.
+    """
 
     def __init__(self):
         super().__init__()
@@ -48,10 +56,13 @@ class ResNetEmbeddings(Embeddings):
     torch.no_grad() should be used to disable differentiation.
 
     Attributes:
+        See `Embeddings`.
         features: net doing the feature extraction.
-        resnet_ids_512: ResNet IDs that rsult in 512-dimensional
+        resnet_ids_512: ResNet IDs that result in 512-dimensional
             representations.
         resnet_ids_2048: Same for 2048.
+        resnet_out_dim: mapping from resnet IDs (int or str) to
+            output dim.
     """
 
     resnet_ids_512 = [18, 34]
@@ -94,12 +105,10 @@ class ResNetEmbeddings(Embeddings):
         """Forward propagation.
 
         Args:
-            x: input image.
+            x: input images.
 
         Returns:
-            512-dimensional region representations if
-            ResNet{18, 34}, 2048-dimensional otherwise,
-            shape is #batches x #regions x repr_dim.
+            Embeddings.
         """
 
         x = self.features(x)
@@ -116,6 +125,7 @@ class Inception3Embeddings(Embeddings):
     torch.no_grad() should be used to disable differentiation.
 
     Attributes:
+        See `Embeddings`.
         features: the whole Inception model.
     """
 
@@ -136,10 +146,10 @@ class Inception3Embeddings(Embeddings):
         """Forward propagation.
 
         Args:
-            x: input image.
+            x: input images.
 
         Returns:
-            2048-dimensional representation.
+            Embeddings.
         """
 
         x = self.features.Conv2d_1a_3x3(x)
@@ -174,10 +184,12 @@ class DenseNetEmbeddings(Embeddings):
     torch.no_grad() should be used to disable differentiation.
 
     Attributes:
+        See `Embeddings`.
         features: net doing the feature extraction.
-        resnet_ids_512: ResNet IDs that rsult in 512-dimensional
-            representations.
-        resnet_ids_2048: Same for 2048.
+        densenet_ids: possible DenseNet IDs (#layers).
+        _densenet_out_dims: possible DenseNet output dimensions,
+            same order as IDs.
+        densenet_out_dim: mapping
     """
 
     densenet_ids = [121, 161, 169, 201]
@@ -187,10 +199,10 @@ class DenseNetEmbeddings(Embeddings):
         {str(k): v for k, v in zip(densenet_ids, _densenet_out_dims)}
     )
 
-    def __init__(self, densenet_id: Optional[Union[int, str]] = 152):
+    def __init__(self, densenet_id: Optional[Union[int, str]] = 169):
         """Init.
         Args:
-            resnet_id: ResNet version to load,
+            densenet_id: ResNet version to load,
                 default is 152 (i.e. ResNet152).
         """
 
@@ -220,12 +232,10 @@ class DenseNetEmbeddings(Embeddings):
         """Forward propagation.
 
         Args:
-            x: input image.
+            x: input images.
 
         Returns:
-            512-dimensional region representations if
-            ResNet{18, 34}, 2048-dimensional otherwise,
-            shape is #batches x #regions x repr_dim.
+            Embeddings.
         """
 
         x = self.features(x)
