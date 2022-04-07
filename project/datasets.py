@@ -1,6 +1,5 @@
 import os
 import csv
-from types import NoneType
 from typing import Optional, Union, Dict, Tuple, List
 from PIL import Image, ImageFile
 
@@ -54,7 +53,7 @@ class IAPSDataset(Dataset):
             self.filter(exclude_fn)
 
     def get_image_transformation(
-        self, crop: Union[int, NoneType]
+        self, crop: Union[int, None]
     ) -> "torchvision.Transform":
         """Creates and return image transformation.
 
@@ -214,7 +213,7 @@ class StimuliDataset(Dataset):
         return len(self.images)
 
     def get_image_transformation(
-        self, crop: Union[int, NoneType]
+        self, crop: Union[int, None]
     ) -> "torchvision.Transform":
         """Creates and return image transformation.
 
