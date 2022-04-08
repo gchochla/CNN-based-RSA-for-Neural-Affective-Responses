@@ -1,6 +1,6 @@
 import logging
 from argparse import Namespace
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 from tqdm import tqdm
 
@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 
 from project.predictors import Predictor
 from project.datasets import IAPSDataset
+from project.image_encoders import Embeddings
 
 
 def get_linear_schedule_with_warmup(
@@ -51,6 +52,90 @@ def get_linear_schedule_with_warmup(
     return optim.lr_scheduler.LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
+class EarlyStopping:
+    """Implements early stopping in a Pytorch fashion, i.e. an init call
+    where the model (you want to save) is an argument and a step function
+    to be called after each evaluation.
+
+    Attributes:
+        model: nn.Module to be saved.
+        fn: where to save model, if None then we don't save.
+        patience: early stopping patience.
+        cnt: number of early stopping steps that metric has not improved.
+        delta: difference before new metric is considered better that the
+            previous best one.
+        higher_better: whether a higher metric is better.
+        comp: function that compares provided metric value with previous
+            best. Returns True if metric is indeed better. New metric should
+            be first argument.
+        best: best metric value so far.
+        logger: logging module.
+    """
+
+    def __init__(
+        self,
+        model: Embeddings,
+        model_path: Union[str, None],
+        patience: Union[int, None],
+        delta: Optional[float] = 0,
+        higher_better: Optional[bool] = False,
+        logging_level: Optional[int] = None,
+    ):
+        """Init.
+
+        Args:
+            model: nn.Module to be saved.
+            model_path: where to save model, if `None` then we don't save.
+            patience: early stopping patience.
+            delta: difference before new metric is considered better that
+                the previous best one.
+            higher_better: whether a higher metric is better.
+        """
+        self.model = model
+        self.fn = model_path
+        self.patience = patience
+        self.cnt = 0
+        self.delta = delta
+        self.higher_better = higher_better
+
+        self.comp = (
+            lambda x, y: x > y + delta if higher_better else x < y - delta
+        )
+        self.best = float("-inf") if higher_better else float("inf")
+
+        self.logger = logging.getLogger(__name__)
+        if not logging_level:
+            logging_level = logging.WARNING
+        self.logger.setLevel(logging_level)
+
+    def step(self, metric: Union[float, None]) -> bool:
+        """Compares new metric (if it is provided) with previous best,
+        saves model if so (and if `model_path` was not `None`) and
+        updates count of unsuccessful steps.
+
+        Args:
+            metric: metric value based on which early stopping is used.
+
+        Returns:
+            Whether the number of unsuccesful steps has exceeded the
+            patience if patience has been set, else the signal to
+            continue training (aka `False`).
+        """
+        if self.patience is None or metric is None:
+            return False  # no early stopping, so user gets signal to continue
+
+        if self.comp(metric, self.best):
+            self.best = metric
+            self.cnt = 0
+            if self.fn is not None:
+                torch.save(self.model.state_dict(), self.fn)
+                self.logger.info("Saved model to " + self.fn)
+        else:
+            self.cnt += 1
+
+        return self.cnt >= self.patience
+
+
 class EmbeddingsTrainer:
     """Image encoder (aka image embeddings) trainer class.
 
@@ -80,13 +165,27 @@ class EmbeddingsTrainer:
                 adam_epsilon, weight_decay, train_batch_size,
                 eval_batch_size, etc.)
             dev_dataset: evaluation dataset.
+            early_stopping_patience: steps (epochs) of patience
+                for early stopping.
             logging_level: at which level to log messages.
         """
+
+        patience = getattr(train_args, "early_stopping_patience", None)
+
+        assert dev_dataset is not None or patience is None
+
         self.model = model
         self.train_dataset = dataset
         self.args = train_args
         self.dev_dataset = dev_dataset
         self.do_eval = dev_dataset is not None
+        if self.do_eval:
+            self.early_stopping = EarlyStopping(
+                self.model.image_encoder,
+                train_args.model_path,
+                patience,
+                logging_level=logging_level,
+            )
 
         self.logger = logging.getLogger(__name__)
         if not logging_level:
@@ -158,6 +257,10 @@ class EmbeddingsTrainer:
 
             self.logger.info(f"Epoch {epoch+1} metrics: {results}")
 
+            if self.early_stopping.step(results.get("eval_loss", None)):
+                self.logger.info(f"Early stopping at epoch {epoch+1}")
+                break
+
     def evaluate(self, data_loader, desc) -> Dict[str, float]:
         """Evaluates on provided `data_loader`.
 
@@ -175,7 +278,8 @@ class EmbeddingsTrainer:
             ids, data, labels = batch
             data = data.to(self.args.device)
             labels = labels.to(self.args.device)
-            predictions = self.model(data)
+            with torch.no_grad():
+                predictions = self.model(data)
 
             loss = self.criterion(predictions, labels)
             eval_loss += loss.item() * len(data)
