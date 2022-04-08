@@ -92,7 +92,7 @@ def main():
     embed_list = [embeddings[str(i + 1)] for i in range(60)]
     embeddings = torch.stack(embed_list, dim=0)
     # pearson corr coefficients
-    rdm = torch.corrcoef(embeddings)
+    rdm = 1 - torch.corrcoef(embeddings)
 
     if args.embeddings_path is None:
 
