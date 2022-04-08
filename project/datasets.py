@@ -68,7 +68,7 @@ class IAPSDataset(Dataset):
             [
                 transforms.Resize(crop + 32),
                 transforms.RandomCrop(crop),
-                transforms.ToTensor(),
+                # transforms.ToTensor(),
                 transforms.Normalize(
                     (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
                 ),
@@ -123,6 +123,7 @@ class IAPSDataset(Dataset):
             A list of images (same order as `ids` attribute).
         """
         images = []
+        to_tensor = transforms.ToTensor()
         for img_id in self.ids:
             try:
                 img_bn = img_id + ".jpg"
@@ -131,7 +132,7 @@ class IAPSDataset(Dataset):
                 img_bn = img_id + ".JPG"
                 image = Image.open(os.path.join(dir, "images", img_bn))
 
-            images.append(image)
+            images.append(to_tensor(image))
 
         return images
 
