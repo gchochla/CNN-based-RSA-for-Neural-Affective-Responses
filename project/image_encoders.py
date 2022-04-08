@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Union, Type
 
 import torch
 import torch.nn as nn
@@ -253,5 +253,5 @@ MODEL_MAPPING = {
 AVAILABLE_MODELS = list(MODEL_MAPPING)
 
 
-def model_mapping(model):
+def model_mapping(model: str) -> Type[Embeddings]:
     return MODEL_MAPPING[model]
