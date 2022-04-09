@@ -3,6 +3,7 @@ import argparse
 import logging
 
 import torch
+import numpy as np
 from tqdm import tqdm
 
 from project.image_encoders import AVAILABLE_MODELS, model_mapping
@@ -11,7 +12,9 @@ from project.datasets import StimuliDataset
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_dir", required=True, type=str, help="dataset directory")
+    parser.add_argument(
+        "--dataset_dir", required=True, type=str, help="dataset directory"
+    )
     parser.add_argument(
         "--model",
         default="densenet",
@@ -24,7 +27,9 @@ def parse_args():
         type=int,
         help="argument for model initialization, e.g. resnet depth",
     )
-    parser.add_argument("--crop_size", default=224, type=int, help="dimension to crop images to")
+    parser.add_argument(
+        "--crop_size", default=224, type=int, help="dimension to crop images to"
+    )
     parser.add_argument(
         "--pretrained",
         action="store_true",
@@ -36,7 +41,7 @@ def parse_args():
         help="path to pretrained model (if this wasn't specified during"
         " training, passing `--pretrained` is enough to use pretrained model)",
     )
-    parser.add_argument("--embeddings_path", type=str, help="path to save embeddings")
+    parser.add_argument("--rdm_path", type=str, help="path to save embeddings")
     parser.add_argument(
         "--logging_level",
         default="INFO",
@@ -56,7 +61,9 @@ def parse_args():
 def main():
     args = parse_args()
 
-    root_dir = os.path.abspath(os.path.join(os.path.split(os.path.abspath(__file__))[0], os.pardir))
+    root_dir = os.path.abspath(
+        os.path.join(os.path.split(os.path.abspath(__file__))[0], os.pardir)
+    )
 
     logging_level = getattr(logging, args.logging_level)
     logging.basicConfig(
@@ -76,7 +83,11 @@ def main():
                 root_dir,
                 "models",
                 args.model
-                + ("_" + str(args.model_arg) if args.model_arg is not None else "")
+                + (
+                    "_" + str(args.model_arg)
+                    if args.model_arg is not None
+                    else ""
+                )
                 + ".pt",
             )
 
@@ -89,21 +100,23 @@ def main():
     for _id, image in tqdm(dataset, desc="Embedding..."):
         embeddings[_id] = encoder(image.unsqueeze(0))[0].detach()
 
-    embed_list = [embeddings[str(i + 1)] for i in range(60)]
-    embeddings = torch.stack(embed_list, dim=0)
+    embed_list = [embeddings[str(i + 1)].numpy() for i in range(60)]
+    embeddings = np.stack(embed_list, axis=0)
     # pearson corr coefficients
-    rdm = 1 - torch.corrcoef(embeddings)
+    rdm = 1 - np.corrcoef(embeddings)
 
-    if args.embeddings_path is None:
+    if args.rdm_path is None:
 
-        args.embeddings_path = os.path.join(
+        args.rdm_path = os.path.join(
             root_dir,
-            "embeddings",
-            args.model + ("_" + str(args.model_arg) if args.model_arg is not None else "") + ".pt",
+            "rdn",
+            args.model
+            + ("_" + str(args.model_arg) if args.model_arg is not None else "")
+            + ".npy",
         )
 
-    logging.info("Saving model to " + args.embeddings_path)
-    torch.save(rdm, args.embeddings_path)
+    logging.info("Saving model to " + args.rdm_path)
+    np.save(args.rdm_path, rdm)
 
 
 if __name__ == "__main__":

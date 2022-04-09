@@ -113,7 +113,7 @@ class IAPSDataset(Dataset):
 
         return ids, np.array(labels, dtype=np.float32)
 
-    def read_images(self, dir: str) -> List[Image.Image]:
+    def read_images(self, dir: str) -> List[torch.Tensor]:
         """Reads images.
 
         Args:
@@ -149,7 +149,7 @@ class IAPSDataset(Dataset):
     def __len__(self) -> int:
         return len(self.ids)
 
-    def set_image_embeddings(self, embedding_dict: Dict[str, np.ndarray]):
+    def set_image_embeddings(self, embedding_dict: Dict[str, torch.Tensor]):
         """Sets embeddings of ALL images to be used instead
         of the images themselves durign fetching.
 
@@ -231,9 +231,9 @@ class StimuliDataset(Dataset):
 
         image_transform = transforms.Compose(
             [
-                transforms.Resize(crop + 32),
-                transforms.RandomCrop(crop),
-                transforms.ToTensor(),
+                transforms.Resize(crop),
+                transforms.CenterCrop(crop),
+                # transforms.ToTensor(),
                 transforms.Normalize(
                     (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
                 ),
@@ -242,7 +242,7 @@ class StimuliDataset(Dataset):
 
         return image_transform
 
-    def read_images(self, dir: str) -> Tuple[List[str], List[Image.Image]]:
+    def read_images(self, dir: str) -> Tuple[List[str], List[torch.Tensor]]:
         """Reads images from directory.
 
         Args:
@@ -253,7 +253,11 @@ class StimuliDataset(Dataset):
         """
         images = []
         ids = []
+
+        to_tensor = transforms.ToTensor()
+
         for img_bn in os.listdir(dir):
             ids.append(os.path.splitext(img_bn)[0])
-            images.append(Image.open(os.path.join(dir, img_bn)))
+            image = Image.open(os.path.join(dir, img_bn))
+            images.append(to_tensor(image))
         return ids, images
