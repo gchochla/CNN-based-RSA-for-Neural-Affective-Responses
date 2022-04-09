@@ -31,9 +31,9 @@ def parse_args():
         "--crop_size", default=224, type=int, help="dimension to crop images to"
     )
     parser.add_argument(
-        "--pretrained",
+        "--finetuned",
         action="store_true",
-        help="whether to use pretrained model",
+        help="whether to use finetuned model",
     )
     parser.add_argument(
         "--model_path",
@@ -77,7 +77,7 @@ def main():
 
     encoder = model_mapping(args.model)(*encoder_args)
 
-    if args.model_path is not None or args.pretrained:
+    if args.model_path is not None or args.finetuned:
         if args.model_path is None:
             args.model_path = os.path.join(
                 root_dir,
@@ -109,9 +109,14 @@ def main():
 
         args.rdm_path = os.path.join(
             root_dir,
-            "rdn",
+            "rdm",
             args.model
             + ("_" + str(args.model_arg) if args.model_arg is not None else "")
+            + (
+                "_finetuned"
+                if args.model_path is not None or args.finetuned
+                else ""
+            )
             + ".npy",
         )
 
