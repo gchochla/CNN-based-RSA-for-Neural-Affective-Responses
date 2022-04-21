@@ -2,6 +2,14 @@
 
 ## Based on the dataset, train_model_v3.py and test_model.py code should be modified!!!
 
+## Python version
+    3.9.7
+
+## Libraries
+    Check the requirements.txt file.
+
+    Example: pip install -r requirements.txt
+
 ## Train A Model:
 
     python train_model_v3.py -d <training data dir> -dv <validation data dir> -nt <num files of train data> -nv <num files of val data> [-m] <model name> [-e] <num epochs> [-b] <batch size> [-s] <sequence length> [-lr] <learning_rate> 
