@@ -25,8 +25,6 @@ import random
 import glob
 from constants import IMAGE_HEIGHT,IMAGE_WIDTH
 
-# Train model using static validation dataset
-
 
 
 def main():
@@ -97,9 +95,9 @@ def main():
     else:
         image_height = IMAGE_HEIGHT
         image_width = IMAGE_WIDTH
-    if model_name=='ConvLSTM':
-        model = convLSTM(seq_len)
-    elif model_name== "InceptionV3":
+    # if model_name=='ConvLSTM':
+    #     model = convLSTM(seq_len)
+    if model_name== "InceptionV3":
         model = InceptionV3(image_height,image_width)
     elif model_name=="AlexNet":
         model = alexnet(image_height,image_width)

@@ -4,15 +4,13 @@
 
 ## Train A Model:
 
-### V3 (include LSTM models, switch to fit generator instead of train on batch)
-
     python train_model_v3.py -d <training data dir> -dv <validation data dir> -nt <num files of train data> -nv <num files of val data> [-m] <model name> [-e] <num epochs> [-b] <batch size> [-s] <sequence length> [-lr] <learning_rate> 
 
 add flag -l to load a model from a checkpoint file
 
     Example: python train_model_v3.py -d ./data -dv ./data -nt 1 -nv 1 -m InceptionV3 -e 1 -b 1 -s 10 -lr 0.01 
     
-Model Names: ConvLSTM, LSTM, CNN, AlexNet, AlexNetV2, Xception, ResNet50 or InceptionV3
+Model Names:  CNN, AlexNet, AlexNetV2, Xception, ResNet50 or InceptionV3
 
 
 ## Model Testing
