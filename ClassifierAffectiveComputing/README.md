@@ -23,16 +23,9 @@ Model Names:  CNN, AlexNet, AlexNetV2, Xception, ResNet50 or InceptionV3
 
 ## Model Testing
 
-### Test CNN Models
-Must have game running in a 800x600 window in the top left corner of the screen
+### Test Models
     
     python test_model.py <absolute_path_to_saved_model>
-
-### Test LSTM Models
-
-    python test_model_lstm.py <seq_len> <model_name> <absolute_path_to_saved_LSTM_model>
-
-Model names: ObjectDetection or ConvLSTM
 
 ## GPU or CPU
 If you want to use GPU, please remove this below. The code is the first part of the main function.
